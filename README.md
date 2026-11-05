@@ -1,35 +1,35 @@
 # Lekker Story ERP
 
-A static ERP and POS web app designed for restaurant accounting workflows, including cashier operations, inventory, procure-to-pay (P2P), general ledger, reporting, and lecturer/demo modes.
+A restaurant accounting and operations dashboard built as a static web app for cashier, manager, and finance workflows. The project combines POS, inventory, procurement, accounting, and demo evaluation features in one interface.
 
-## Project overview
+## Overview
 
-This project is built as a front-end application with Firebase for authentication and data storage. It is intended to run as a static site and can be deployed to GitHub Pages, Vercel, Netlify, or Firebase Hosting.
+Lekker Story ERP is a front-end ERP prototype for a food and beverage business. It uses Firebase for authentication and data persistence, and is designed to run as a static site on local servers or hosted platforms such as Vercel, Netlify, or Firebase Hosting.
 
-## Key features
+## Features
 
-- POS and cashier workflow
-- Inventory and stock management
-- Purchase orders, GRN, and AP workflow
-- Double-entry accounting and trial balance
-- Financial statements and monitoring dashboard
-- Demo mode for lecturer evaluation
-- Local web-server requirement to avoid file:// loading issues
+- POS and cashier sales workflow
+- Inventory and stock tracking
+- Procurement and purchasing process
+- Double-entry accounting and general ledger flow
+- Financial statements and reporting
+- Audit-friendly demo mode for evaluation
+- Clean static deployment structure
 
-## Repository structure
+## Project structure
 
 ```text
 ais-lekker-story/
-├── index.html                  # Generated app entry file
-├── index (3).html              # Legacy backup / earlier monolith
+├── index.html                  # Main app entry point
 ├── assets/
 │   ├── css/
 │   │   └── main.css
 │   └── js/
 │       ├── app.js
+│       ├── menu-catalog.js
 │       └── config/
 │           ├── firebase.config.example.js
-│           └── firebase.config.js   # local-only, ignored by Git
+│           └── firebase.config.js   # local-only config, not committed
 ├── docs/
 │   ├── ACCOUNTING.md
 │   └── LECTURER_GUIDE.md
@@ -37,30 +37,34 @@ ais-lekker-story/
 │   └── body.html
 ├── scripts/
 │   ├── build-index.ps1
+│   ├── gen-menu-catalog.js
 │   └── index-head.html
+├── .gitignore
 ├── README.md
 ├── start-server.bat
 ├── vercel.json
-└── .gitignore
+└── LICENSE (optional if added later)
 ```
 
-## Roles in the demo app
+## Demo roles
 
-| Role | Demo email | Main access |
-|------|------------|-------------|
-| Cashier | cashier@lekker.id | POS, shift closing, cash reconciliation |
-| Manager | manager@lekker.id | Dashboard, inventory, purchasing, recipes |
-| Finance | finance@lekker.id | AP, GL, financial statements |
+| Role | Demo email | Access |
+|------|------------|--------|
+| Cashier | cashier@lekker.id | POS and cash reconciliation |
+| Manager | manager@lekker.id | Dashboard, inventory, procurement |
+| Finance | finance@lekker.id | Accounting, AP, financial reporting |
 
-Default demo password: password123
+Default password: password123
 
-## Quick start
+## Run locally
 
-> Important: do not open the app directly with index.html in the browser. Use a local web server.
+> Do not open the app by double-clicking index.html directly. Use a local web server instead.
 
 ### Option 1: Windows shortcut
 
-Double-click start-server.bat in the project folder. It will launch:
+Double-click start-server.bat in the project folder.
+
+Then open:
 
 http://localhost:8080
 
@@ -84,63 +88,59 @@ npx serve -l 8080
 
 ### Demo mode
 
-Add the URL parameter ?demo=1 to enable lecturer/demo functions:
+Use the query parameter ?demo=1 to enable extra evaluation features:
 
+```text
 http://localhost:8080/?demo=1
+```
 
-This is helpful for testing reset flows and sample data loading.
+## Firebase setup
 
-## Firebase setup for GitHub upload
+This project expects a local Firebase config file that is not committed to GitHub.
 
-Before uploading to GitHub, keep your real Firebase credentials local and do not commit them.
-
-1. Copy the example file to your local config:
+1. Copy the example file:
 
 ```bash
 copy assets\js\config\firebase.config.example.js assets\js\config\firebase.config.js
 ```
 
-2. Update the values in assets/js/config/firebase.config.js with your own Firebase project settings.
-3. Keep this file local; it is ignored by Git via .gitignore.
+2. Fill in your Firebase project values in assets/js/config/firebase.config.js.
+3. Keep this file local and private.
 
-If you are publishing a public repository, rotate the credentials if they were already exposed before.
+If the project is public, rotate any previously exposed Firebase keys before publishing.
 
-## Deployment notes
+## Deployment
 
 ### Vercel
 
-1. Push the repo to GitHub.
-2. In Vercel, choose Import Project.
-3. Use the repository root as the project root.
-4. The included vercel.json already sets the build command and static output.
+1. Push this repo to GitHub.
+2. Import the repository in Vercel.
+3. Use the project root as the root directory.
+4. The included vercel.json handles the static build output.
 
-### Other static hosts
+### Other static host providers
 
-- Firebase Hosting: use the project root as the public directory.
-- Netlify / GitHub Pages: use the same root folder after building index.html.
+- Firebase Hosting
+- Netlify
+- GitHub Pages
 
 ## Documentation
 
-- docs/ACCOUNTING.md – accounting checklist and operational notes
-- docs/LECTURER_GUIDE.md – demo and evaluation guidance
+- docs/ACCOUNTING.md — accounting checklist and system notes
+- docs/LECTURER_GUIDE.md — lecturer/demo instructions and evaluation workflow
 
 ## Tech stack
 
 - HTML5
-- Tailwind CSS via CDN
-- Vanilla JavaScript (ES modules)
+- Tailwind CSS
+- Vanilla JavaScript
 - Firebase Auth, Firestore, and Storage
-- Chart.js for dashboards
+- Chart.js
 
-## GitHub upload steps
+## Repository status
 
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
-git push -u origin main
-```
+This repo is intended to be a clean public GitHub project. The legacy duplicate file has been removed, and the current main entry point is index.html.
 
-If you want, I can also help you set up the repository name and generate the exact Git commands for your GitHub account.
+## License
+
+This project does not currently include a license file. If you intend to publish it publicly, consider adding an appropriate license such as MIT.
