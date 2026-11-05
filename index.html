@@ -1,0 +1,1210 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Lekker Story ERP — restaurant accounting, POS, procure-to-pay, general ledger, and financial statements.">
+    <meta name="theme-color" content="#78350f">
+    <title>Lekker Story ERP | Accounting Information System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
+                    colors: {
+                        brand: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            500: '#d97706',
+                            600: '#b45309',
+                            700: '#78350f',
+                            900: '#451a03'
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+</head>
+<body class="h-screen w-full overflow-hidden flex flex-col text-slate-800">
+
+    <!-- Application boot loader -->
+    <div id="app-loader" aria-live="polite" aria-busy="true">
+        <span class="text-4xl" aria-hidden="true">🍫</span>
+        <div id="loader-spinner" class="loader-ring" role="status" aria-label="Loading"></div>
+        <p class="text-sm font-semibold tracking-wide text-amber-100">Lekker Story ERP</p>
+        <p id="loader-status" class="text-[10px] text-amber-200/80 uppercase tracking-widest">Initializing accounting engine…</p>
+        <div id="loader-file-error" class="hide max-w-sm text-center px-4 mt-4 space-y-3">
+            <p class="text-sm font-bold text-amber-50">Cannot open by double-clicking the file</p>
+            <p class="text-xs text-amber-100/90 leading-relaxed">Browsers block this app on <code class="bg-black/30 px-1 rounded">file://</code>. Start a local server, then use the link below.</p>
+            <p class="text-[11px] font-mono bg-black/35 rounded-xl px-3 py-2 text-amber-100">python -m http.server 8080</p>
+            <p class="text-xs text-amber-200">Or double-click <strong>start-server.bat</strong> in this folder, then open:</p>
+            <a id="loader-local-link" href="http://localhost:8080" class="inline-block bg-amber-400 hover:bg-amber-300 text-brand-900 font-bold text-xs px-4 py-2 rounded-xl transition">http://localhost:8080</a>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Single-row app header: brand · tabs · clock · user -->
+    <nav id="global-nav" class="global-header z-40 hide">
+        <div class="global-header-shimmer" aria-hidden="true"></div>
+        <div class="global-header-inner global-header-inner--unified">
+            <div class="global-header-brand">
+                <span class="global-brand-emoji">🍫</span>
+                <div class="min-w-0">
+                    <h1 class="font-extrabold text-sm md:text-base tracking-tight leading-tight text-white">Lekker Story <span class="text-amber-300 text-[9px] font-bold bg-black/25 px-1.5 py-0.5 rounded-full ml-0.5 border border-amber-500/40">ERP</span></h1>
+                    <p class="text-[10px] text-amber-100/80 truncate"><span id="nav-role-badge">—</span></p>
+                </div>
+            </div>
+            <nav id="portal-tabs-manager" class="portal-tabs-inline portal-tabs-inline--manager hide" role="tablist" aria-label="Manager">
+                <button type="button" onclick="manager.switchTab('dashboard')" class="erp-nav-tab manager-tab erp-nav-tab-active" data-tab="dashboard"><i class="fas fa-chart-line"></i><span>Dashboard</span></button>
+                <button type="button" onclick="manager.switchTab('inventory')" class="erp-nav-tab manager-tab" data-tab="inventory"><i class="fas fa-cubes"></i><span>Inventory</span></button>
+                <button type="button" onclick="manager.switchTab('procurement')" class="erp-nav-tab manager-tab" data-tab="procurement"><i class="fas fa-truck"></i><span>Procurement</span></button>
+                <button type="button" onclick="manager.switchTab('menu')" class="erp-nav-tab manager-tab" data-tab="menu"><i class="fas fa-pizza-slice"></i><span>Menu</span></button>
+            </nav>
+            <nav id="portal-tabs-finance" class="portal-tabs-inline portal-tabs-inline--finance hide" role="tablist" aria-label="Finance">
+                <button type="button" onclick="finance.switchTab('dashboard')" class="erp-nav-tab fin-tab erp-nav-tab-active" data-tab="dashboard"><i class="fas fa-chart-line"></i><span>Overview</span></button>
+                <button type="button" onclick="finance.switchTab('accounting')" class="erp-nav-tab fin-tab" data-tab="accounting"><i class="fas fa-book"></i><span>Accounting</span></button>
+                <button type="button" onclick="finance.switchTab('procurement')" class="erp-nav-tab fin-tab" data-tab="procurement"><i class="fas fa-truck"></i><span>Procurement</span></button>
+                <button type="button" onclick="finance.switchTab('audit')" class="erp-nav-tab fin-tab" data-tab="audit"><i class="fas fa-clipboard-list"></i><span>Audit</span></button>
+            </nav>
+            <div class="global-header-actions">
+                <div id="eval-mode-panel" class="demo-only hide flex items-center gap-1.5 flex-wrap justify-end">
+                    <button type="button" onclick="utils.resetAllData()" class="demo-btn demo-btn--reset" title="Reset"><i class="fas fa-rotate-left"></i></button>
+                    <button type="button" onclick="utils.loadDemoData()" class="demo-btn demo-btn--load" title="Sample data"><i class="fas fa-database"></i></button>
+                    <button type="button" onclick="utils.resumeFirebaseSync()" class="demo-btn demo-btn--sync" title="Sync"><i class="fas fa-cloud"></i></button>
+                </div>
+                <div class="app-clock-block" id="global-clock-block">
+                    <p class="app-clock__time" data-live-clock>—</p>
+                    <p class="app-clock__meta"><span data-store-status class="store-status">—</span> · 10:00–23:30</p>
+                </div>
+                <div class="global-badge-live"><span class="dot"></span><span id="nav-user-name">User</span></div>
+                <button type="button" onclick="app.logout()" class="btn-logout" title="Logout"><i class="fas fa-power-off"></i></button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- VIEW 1: LOGIN -->
+    <div id="view-login" class="view-login flex-1 h-screen w-full">
+        <div class="view-login-bg" aria-hidden="true"><span class="orb orb-1"></span><span class="orb orb-2"></span><span class="orb orb-3"></span></div>
+        <div class="view-login-dots" aria-hidden="true"></div>
+        <div class="login-stage fade-in-up">
+            <article class="login-panel">
+                <aside class="login-panel__brand">
+                    <div class="login-panel__brand-inner">
+                        <span class="login-panel__logo">🍫</span>
+                        <h1 class="login-panel__title">Lekker Story</h1>
+                        <div class="login-panel__clock">
+                            <span class="login-panel__clock-label">Now</span>
+                            <time class="login-panel__clock-time" data-live-clock>—</time>
+                            <p class="login-panel__hours"><span data-store-status class="store-status">—</span> · 10:00 – 23:30</p>
+                        </div>
+                    </div>
+                </aside>
+                <section class="login-panel__form">
+                    <header class="login-form__head">
+                        <h2 class="login-form__title">Welcome back</h2>
+                        <p class="login-form__sub">Sign in to your workspace</p>
+                    </header>
+                    <div class="login-form__fields">
+                        <div class="login-field">
+                            <label class="ui-label" for="login-email">Email</label>
+                            <div class="login-field__wrap">
+                                <i class="fas fa-envelope login-field__icon"></i>
+                                <input type="email" id="login-email" class="ui-input login-field__input" placeholder="cashier@lekker.id" autocomplete="username">
+                            </div>
+                        </div>
+                        <div class="login-field">
+                            <label class="ui-label" for="login-password">Password</label>
+                            <div class="login-field__wrap">
+                                <i class="fas fa-lock login-field__icon"></i>
+                                <input type="password" id="login-password" class="ui-input login-field__input" placeholder="••••••••" autocomplete="current-password">
+                            </div>
+                        </div>
+                        <button type="button" onclick="app.login()" class="btn-primary login-form__submit"><i class="fas fa-right-to-bracket"></i> Sign in</button>
+                    </div>
+                    <div class="login-form__demo">
+                        <p class="login-form__demo-label">Quick demo</p>
+                        <div class="login-role-grid">
+                            <button type="button" onclick="app.fillLogin('cashier@lekker.id')" class="role-btn role-btn--cashier"><i class="fas fa-cash-register"></i><span>Cashier</span></button>
+                            <button type="button" onclick="app.fillLogin('manager@lekker.id')" class="role-btn role-btn--manager"><i class="fas fa-user-tie"></i><span>Manager</span></button>
+                            <button type="button" onclick="app.fillLogin('finance@lekker.id')" class="role-btn role-btn--finance"><i class="fas fa-coins"></i><span>Finance</span></button>
+                        </div>
+                    </div>
+                    <footer class="login-form__foot">© Lekker Story ERP · AIS demo</footer>
+                </section>
+            </article>
+        </div>
+    </div>
+
+    <!-- VIEW 2: CASHIER POS -->
+    <div id="view-cashier" class="erp-portal erp-portal--pos flex-1 flex flex-col overflow-hidden hide h-full">
+        <header class="pos-topbar">
+            <div class="erp-topnav-shimmer"></div>
+            <div class="pos-topbar-inner">
+                <div class="flex items-center gap-3 text-white">
+                    <span class="erp-topnav-emoji float-soft">🧾</span>
+                    <div>
+                        <p class="erp-topnav-title">POS Cashier</p>
+                        <p class="erp-topnav-sub">Sales · Inventory</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <div class="app-clock-block app-clock-block--pos">
+                        <p class="app-clock__time" data-live-clock>—</p>
+                        <p class="app-clock__meta"><span data-store-status class="store-status">—</span></p>
+                    </div>
+                    <div class="pos-queue-chip">
+                        <p class="pos-queue-chip__label">Last order</p>
+                        <p id="pos-queue-badge" class="pos-queue-chip__num">—</p>
+                        <p class="pos-queue-chip__next">Next <span id="pos-queue-next">#1</span></p>
+                    </div>
+                    <div id="pos-topbar-shift-stats" class="pos-topbar-stats hide" aria-label="Shift statistics">
+                        <div class="pos-topbar-stat"><span class="pos-topbar-stat__val" id="pos-stat-shift-rev">Rp 0</span><span class="pos-topbar-stat__lbl">Revenue</span></div>
+                        <div class="pos-topbar-stat"><span class="pos-topbar-stat__val" id="pos-stat-shift-orders">0</span><span class="pos-topbar-stat__lbl">Orders</span></div>
+                        <div class="pos-topbar-stat"><span class="pos-topbar-stat__val" id="pos-stat-shift-cash">Rp 0</span><span class="pos-topbar-stat__lbl">Cash</span></div>
+                    </div>
+                    <span id="shift-status-badge" class="shift-badge shift-badge--closed">Shift Closed</span>
+                    <button type="button" id="btn-toggle-shift" onclick="pos.toggleShift()" class="btn-accent">Open Shift</button>
+                    <button type="button" onclick="app.logout()" class="btn-logout-pos" title="Logout"><i class="fas fa-power-off"></i></button>
+                </div>
+            </div>
+        </header>
+        <div class="flex flex-1 min-h-0 overflow-hidden">
+            <section class="pos-menu-panel flex-1 min-w-0">
+                <div class="pos-toolbar">
+                    <div class="pos-toolbar__category">
+                        <label class="pos-toolbar__label" for="pos-cat-dropdown"><i class="fas fa-filter"></i> Menu category</label>
+                        <select id="pos-cat-dropdown" class="pos-cat-select" onchange="pos.filterMenu(this.value)" aria-label="Filter menu by category"></select>
+                    </div>
+                    <p id="pos-menu-count" class="pos-toolbar__hint">Showing all items</p>
+                </div>
+                <div class="pos-menu-grid">
+                    <div id="pos-menu-container" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+                </div>
+            </section>
+            <aside class="pos-cart-panel sparkle-card shrink-0">
+                <div class="pos-cart-side">
+                    <header class="pos-cart-hero">
+                        <div class="pos-cart-hero__left">
+                            <h3 class="pos-cart-hero__title"><i class="fas fa-basket-shopping"></i> Customer order</h3>
+                            <p id="pos-cart-count" class="pos-cart-hero__count">Cart is empty</p>
+                            <p id="pos-active-shift-time" class="pos-cart-hero__shift hide"><i class="fas fa-user-clock"></i> <span id="pos-active-cashier-name">—</span></p>
+                        </div>
+                        <div class="pos-cart-hero__total-wrap">
+                            <span class="pos-cart-hero__total-label">Total</span>
+                            <span id="pos-cart-hero-total" class="pos-cart-hero__total">Rp 0</span>
+                        </div>
+                    </header>
+                    <div id="pos-cart-items" class="pos-cart-list" role="list" aria-label="Cart items">
+                        <div class="pos-cart-empty">
+                            <i class="fas fa-shopping-basket"></i>
+                            <p>No items yet — choose a menu on the left</p>
+                        </div>
+                    </div>
+                    <footer class="pos-cart-footer">
+                        <div class="pos-cart-footer__pay">
+                            <span class="pos-cart-footer__pay-label">Pay</span>
+                            <div class="pos-pay-row">
+                                <label class="pos-pay-chip"><input type="radio" name="pay_method" value="Cash" class="sr-only" checked><span><i class="fas fa-money-bill-wave"></i> Cash</span></label>
+                                <label class="pos-pay-chip"><input type="radio" name="pay_method" value="QRIS" class="sr-only"><span><i class="fas fa-qrcode"></i> QRIS</span></label>
+                                <label class="pos-pay-chip"><input type="radio" name="pay_method" value="Card" class="sr-only"><span><i class="fas fa-credit-card"></i> Card</span></label>
+                            </div>
+                        </div>
+                        <div class="pos-cart-footer__sums">
+                            <div class="pos-cart-sum"><span>Subtotal</span><span id="pos-subtotal">Rp 0</span></div>
+                            <div class="pos-cart-sum pos-cart-sum--muted"><span>PB1 (10%)</span><span id="pos-tax">Rp 0</span></div>
+                        </div>
+                        <p id="pos-total" class="pos-cart-footer__grand" aria-live="polite">Rp 0</p>
+                        <button type="button" onclick="pos.checkout()" id="btn-checkout" disabled class="btn-checkout"><i class="fas fa-receipt"></i> Pay &amp; print receipt</button>
+                    </footer>
+                </div>
+                <div id="pos-shift-log" class="hide" aria-hidden="true"></div>
+                <div id="pos-overlay-shift" class="pos-overlay">
+                    <div class="pos-overlay-card sparkle-card">
+                        <div class="text-5xl mb-4 text-center">🧾</div>
+                        <h3 class="text-xl font-black text-slate-800 mb-1">Open Shift</h3>
+                        <div class="space-y-3 text-left">
+                            <div><label class="ui-label" for="shift-cashier-name">Cashier name</label><input type="text" id="shift-cashier-name" class="ui-input" placeholder="Operator name"></div>
+                            <div><label class="ui-label" for="shift-opening-cash">Opening cash (IDR)</label><input type="number" id="shift-opening-cash" class="ui-input" value="100000"></div>
+                            <button type="button" onclick="pos.toggleShift()" class="btn-primary">Open Register</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="pos-close-shift-modal" class="pos-overlay hide">
+                    <div class="pos-overlay-card sparkle-card">
+                        <div class="text-5xl mb-4 text-center">🔐</div>
+                        <h3 class="text-xl font-black text-slate-800 mb-1">Close Shift</h3>
+                        <div class="pos-totals-box text-xs space-y-2 mb-4 text-left">
+                            <div class="flex justify-between"><span>Cashier</span><span id="close-modal-cashier" class="font-bold">—</span></div>
+                            <div class="flex justify-between"><span>Orders (queue)</span><span id="close-modal-orders" class="font-bold">0</span></div>
+                            <div class="flex justify-between"><span>Total shift revenue</span><span id="close-modal-revenue" class="font-bold">Rp 0</span></div>
+                            <div class="flex justify-between"><span>Opening cash</span><span id="close-modal-op-cash" class="font-bold">Rp 0</span></div>
+                            <div class="flex justify-between"><span>Cash payments only</span><span id="close-modal-sales-cash" class="font-bold">Rp 0</span></div>
+                            <div class="flex justify-between text-brand-700 font-bold border-t border-amber-200 pt-2"><span>Expected in drawer</span><span id="close-modal-expected-cash">Rp 0</span></div>
+                        </div>
+                        <div class="space-y-3">
+                            <div><label class="ui-label" for="shift-ending-cash-count">Counted cash (IDR)</label><input type="number" id="shift-ending-cash-count" class="ui-input text-center text-lg" placeholder="0"></div>
+                            <button type="button" onclick="pos.submitCloseShift()" class="btn-primary" style="background:linear-gradient(135deg,#dc2626,#b91c1c)">Reconcile</button>
+                            <button type="button" onclick="document.getElementById('pos-close-shift-modal').classList.add('hide')" class="text-xs text-slate-500 w-full hover:underline">Back</button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- VIEW 3: MANAGER PORTAL -->
+    <div id="view-manager" class="flex-1 flex flex-col overflow-hidden hide h-full erp-portal erp-portal--manager">
+        <main class="erp-portal-main flex-1 overflow-y-auto p-6 md:p-8">
+            <div class="erp-portal-bg" aria-hidden="true"><span class="orb orb-1"></span><span class="orb orb-2"></span></div>
+            <div class="erp-portal-content relative z-10">
+            
+            <!-- Manager dashboard — operations & sales focus -->
+            <div id="mgr-tab-dashboard" class="mgr-content space-y-5">
+                <div class="erp-page-header flex-wrap gap-3">
+                    <div class="flex items-center gap-3 flex-1 min-w-[200px]">
+                        <div class="erp-page-header-icon bg-amber-500/20 text-amber-600"><i class="fas fa-chart-pie"></i></div>
+                        <div>
+                            <h2 class="text-xl font-black text-slate-800 tracking-tight">Operations dashboard</h2>
+                            <p class="text-xs text-slate-500">POS sales, margins &amp; stock alerts · <span data-live-clock class="font-mono">—</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kpi-grid kpi-grid--6">
+                    <div class="kpi-card"><span class="kpi-card__label">Revenue</span><span class="kpi-card__value" id="mgr-stat-revenue">Rp 0</span></div>
+                    <div class="kpi-card"><span class="kpi-card__label">Net profit</span><span class="kpi-card__value" id="mgr-stat-net">Rp 0</span></div>
+                    <div class="kpi-card"><span class="kpi-card__label">POS transactions</span><span class="kpi-card__value" id="mgr-stat-trx">0</span></div>
+                    <div class="kpi-card"><span class="kpi-card__label">COGS</span><span class="kpi-card__value kpi-card__value--amber" id="mgr-stat-cogs">Rp 0</span></div>
+                    <div class="kpi-card kpi-card--alert"><span class="kpi-card__label">Pending PRs</span><span class="kpi-card__value" id="mgr-stat-pending-pr">0</span></div>
+                    <div class="kpi-card kpi-card--alert"><span class="kpi-card__label">Below par stock</span><span class="kpi-card__value" id="mgr-stat-low-stock">0</span></div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="panel-plain overflow-hidden panel-chart-block">
+                        <div class="panel-head"><h3>Last 7 days — income vs expenses</h3><span class="text-[10px] text-slate-400 font-bold">Chart + breakdown</span></div>
+                        <div class="chart-wrap chart-wrap--medium"><canvas id="chart-daily-ie"></canvas></div>
+                        <div class="panel-breakdown">
+                            <table class="metrics-table metrics-table--compact"><thead><tr><th>Day</th><th class="num-cell">Income</th><th class="num-cell">Expense</th><th class="num-cell">Net</th></tr></thead><tbody id="mgr-table-daily"></tbody></table>
+                        </div>
+                    </div>
+                    <div class="panel-plain overflow-hidden panel-chart-block">
+                        <div class="panel-head"><h3>Top menu sales</h3><span class="text-[10px] text-slate-400 font-bold">Chart + breakdown</span></div>
+                        <div class="chart-wrap chart-wrap--medium"><canvas id="revenueChart"></canvas></div>
+                        <div class="panel-breakdown">
+                            <table class="metrics-table metrics-table--compact"><thead><tr><th>Menu</th><th class="num-cell">Qty</th><th class="num-cell">Revenue</th></tr></thead><tbody id="mgr-table-products"></tbody></table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="mgr-stock-alerts-panel" class="panel-plain overflow-hidden hide">
+                    <div class="panel-head"><h3>Stock alerts</h3><span class="text-[10px] font-bold text-red-600">Below par</span></div>
+                    <table class="metrics-table metrics-table--compact"><thead><tr><th>Item</th><th class="num-cell">On hand</th><th class="num-cell">Par</th></tr></thead><tbody id="mgr-table-stock-alerts"></tbody></table>
+                </div>
+            </div>
+
+            <!-- Inventory Tab -->
+            <div id="mgr-tab-inventory" class="mgr-content hide">
+                <div class="erp-page-header mb-6 flex-wrap gap-4">
+                    <div class="flex items-center gap-4 flex-1 min-w-[200px]">
+                        <div class="erp-page-header-icon bg-emerald-500/20 text-emerald-600"><i class="fas fa-warehouse"></i></div>
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-800 tracking-tight">Inventory &amp; stocktake</h2>
+                            <p class="text-xs text-slate-500">Purchase requests &amp; PO tracking are on the Procurement tab</p>
+                        </div>
+                    </div>
+                    <button onclick="manager.openAddInventoryModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow transition flex items-center gap-2">
+                        <i class="fas fa-plus"></i> ADD NEW RAW MATERIAL
+                    </button>
+                </div>
+                
+                <div class="panel-plain overflow-hidden fade-in-up">
+                    <div class="panel-head"><h3>Stock on hand</h3></div>
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-100 text-slate-600 uppercase font-extrabold text-[10px] tracking-wider border-b">
+                            <tr>
+                                <th class="p-3.5 pl-6">Raw Material Name</th>
+                                <th class="p-3.5">Physical Stock</th>
+                                <th class="p-3.5">Par Level</th>
+                                <th class="p-3.5">Standard Cost</th>
+                                <th class="p-3.5 text-right pr-6">Procurement & Stocktake Flow</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mgr-inventory-list" class="divide-y divide-slate-100 font-medium">
+                            <!-- Dynamic via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- --- FIX 3 --- Procurement Tab (PR + PO unified P2P tracker) -->
+            <div id="mgr-tab-procurement" class="mgr-content hide">
+                <div class="erp-page-header mb-6">
+                    <div class="flex items-center gap-4">
+                        <div class="erp-page-header-icon bg-brand-500/20 text-brand-600"><i class="fas fa-truck"></i></div>
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-800 tracking-tight">Procurement (P2P)</h2>
+                            <p class="text-xs text-slate-500">Purchase requests &amp; issued POs — GRN &amp; AP are handled by Finance</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="panel-plain overflow-hidden fade-in-up">
+                        <div class="panel-head"><h3>Section A — Purchase requests (PR)</h3></div>
+                        <div id="mgr-pr-list" class="p-4 space-y-3 overflow-y-auto max-h-[450px]">
+                            <!-- Dynamic via JS -->
+                        </div>
+                    </div>
+                    <div class="panel-plain overflow-hidden fade-in-up lg:col-span-1">
+                        <div class="panel-head"><h3>Section B — Purchase orders (PO)</h3></div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-100 text-slate-600 uppercase font-extrabold text-[10px] tracking-wider border-b">
+                                    <tr>
+                                        <th class="p-3.5 pl-6">PO#</th>
+                                        <th class="p-3.5">Linked PR#</th>
+                                        <th class="p-3.5">Supplier</th>
+                                        <th class="p-3.5">Item</th>
+                                        <th class="p-3.5">Qty</th>
+                                        <th class="p-3.5 text-right">Value</th>
+                                        <th class="p-3.5 pr-6">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mgr-po-list" class="divide-y divide-slate-100 font-medium">
+                                    <!-- Dynamic via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recipe (BOM) Tab -->
+            <div id="mgr-tab-menu" class="mgr-content hide">
+                <div class="erp-page-header mb-6 flex-wrap gap-3">
+                    <div class="flex items-center gap-4 flex-1 min-w-[200px]">
+                        <div class="erp-page-header-icon bg-orange-500/20 text-orange-600"><i class="fas fa-blender"></i></div>
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-800 tracking-tight">Menu recipes (BOM)</h2>
+                            <p class="text-xs text-slate-500">Recipes drive POS stock &amp; COGS posting</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="manager.openAddMenuModal()" class="btn-mgr-action"><i class="fas fa-plus"></i> New menu item</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="mgr-menu-list">
+                    <!-- Dynamic via JS -->
+                </div>
+            </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- VIEW 4: FINANCE & ERP PORTAL -->
+    <div id="view-finance" class="flex-1 flex flex-col overflow-hidden hide h-full erp-portal erp-portal--finance">
+        <main class="erp-portal-main flex-1 overflow-y-auto p-6 md:p-8 text-slate-800">
+            <div class="erp-portal-bg" aria-hidden="true"><span class="orb orb-1"></span><span class="orb orb-2"></span></div>
+            <div class="erp-portal-content relative z-10">
+
+            <nav id="fin-accounting-subnav" class="subnav-pills hide" role="tablist" aria-label="Accounting sections">
+                <button type="button" class="subnav-pill fin-acc-sub" data-sub="sales_journal">Sales journal</button>
+                <button type="button" class="subnav-pill fin-acc-sub subnav-pill-active" data-sub="ledger">Ledger</button>
+                <button type="button" class="subnav-pill fin-acc-sub" data-sub="trial_balance">Trial balance</button>
+                <button type="button" class="subnav-pill fin-acc-sub" data-sub="income_statement">P&amp;L</button>
+                <button type="button" class="subnav-pill fin-acc-sub" data-sub="balance_sheet">Balance sheet</button>
+                <button type="button" class="subnav-pill fin-acc-sub" data-sub="adjusting">Adjusting</button>
+            </nav>
+            <nav id="fin-procurement-subnav" class="subnav-pills hide" role="tablist" aria-label="Procurement sections">
+                <button type="button" class="subnav-pill fin-proc-sub subnav-pill-active" data-sub="po">PO</button>
+                <button type="button" class="subnav-pill fin-proc-sub" data-sub="grn">GRN</button>
+                <button type="button" class="subnav-pill fin-proc-sub" data-sub="ap">3-Way match</button>
+            </nav>
+
+            <div id="fin-period-filter" class="fin-period-bar hide" role="group" aria-label="Finance reporting period">
+                <div class="fin-period-bar__glow" aria-hidden="true"></div>
+                <div class="fin-period-bar__main">
+                    <div class="fin-period-bar__head">
+                        <div class="fin-period-bar__icon"><i class="fas fa-calendar-days"></i></div>
+                        <div class="fin-period-bar__titles">
+                            <p class="fin-period-bar__title">Reporting period</p>
+                            <p id="fin-period-label" class="fin-period-bar__subtitle">All periods — full books</p>
+                        </div>
+                    </div>
+                    <div class="fin-period-bar__controls">
+                        <div class="fin-period-segments" role="tablist" aria-label="Period mode">
+                            <button type="button" class="fin-period-seg fin-period-seg--active" data-mode="all" aria-pressed="true">All</button>
+                            <button type="button" class="fin-period-seg" data-mode="day" aria-pressed="false">Day</button>
+                            <button type="button" class="fin-period-seg" data-mode="month" aria-pressed="false">Month</button>
+                        </div>
+                        <input type="date" id="fin-filter-day" class="fin-period-date hide" aria-label="Filter by day">
+                        <input type="month" id="fin-filter-month" class="fin-period-date hide" aria-label="Filter by month">
+                    </div>
+                    <div class="fin-period-bar__stats" id="fin-period-stats">
+                        <span class="fin-period-chip" title="Journal vouchers in view"><i class="fas fa-book-open"></i><strong id="fin-stat-journals">0</strong><span>journals</span></span>
+                        <span class="fin-period-chip" title="POS sales in view"><i class="fas fa-cash-register"></i><strong id="fin-stat-sales">0</strong><span>sales</span></span>
+                        <span class="fin-period-chip" title="General ledger lines in view"><i class="fas fa-list-ol"></i><strong id="fin-stat-lines">0</strong><span>GL lines</span></span>
+                    </div>
+                </div>
+                <p id="fin-filter-hint" class="fin-period-bar__hint">Applies to overview KPIs, ledger, trial balance, P&amp;L, balance sheet, sales &amp; adjusting journals, procurement, and audit log.</p>
+            </div>
+            
+            <!-- Finance overview — GL & procurement focus -->
+            <div id="fin-tab-dashboard" class="fin-content hide space-y-5">
+                <div class="erp-page-header flex-wrap gap-3">
+                    <div class="flex items-center gap-3 flex-1 min-w-[200px]">
+                        <div class="erp-page-header-icon bg-emerald-500/20 text-emerald-700"><i class="fas fa-chart-line"></i></div>
+                        <div>
+                            <h2 class="text-xl font-black text-slate-800 tracking-tight">Financial overview</h2>
+                            <p class="text-xs text-slate-500">General ledger &amp; P2P · <span data-live-clock class="font-mono">—</span></p>
+                        </div>
+                    </div>
+                    <div id="fin-books-balanced" class="posting-badge posting-badge--ok hide"><i class="fas fa-check-circle"></i> Books balanced</div>
+                </div>
+
+                <div class="kpi-grid kpi-grid--6">
+                    <div class="kpi-card"><span class="kpi-card__label">Cash &amp; bank</span><span class="kpi-card__value" id="fin-kpi-cash">Rp 0</span></div>
+                    <div class="kpi-card"><span class="kpi-card__label">Inventory (110)</span><span class="kpi-card__value" id="fin-kpi-inventory">Rp 0</span></div>
+                    <div class="kpi-card"><span class="kpi-card__label">Accounts payable</span><span class="kpi-card__value" id="fin-kpi-ap">Rp 0</span></div>
+                    <div class="kpi-card"><span class="kpi-card__label">Revenue (401)</span><span class="kpi-card__value" id="fin-kpi-revenue">Rp 0</span></div>
+                    <div class="kpi-card"><span class="kpi-card__label">Total expenses</span><span class="kpi-card__value" id="fin-kpi-expense">Rp 0</span></div>
+                    <div class="kpi-card"><span class="kpi-card__label">Net profit</span><span class="kpi-card__value" id="fin-kpi-net">Rp 0</span></div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="panel-plain overflow-hidden panel-chart-block">
+                        <div class="panel-head"><h3>6-month trend</h3><span class="text-[10px] text-slate-400 font-bold">Chart + breakdown</span></div>
+                        <div class="chart-wrap chart-wrap--medium"><canvas id="fin-chart-monthly"></canvas></div>
+                        <div class="panel-breakdown">
+                            <table class="metrics-table metrics-table--compact"><thead><tr><th>Month</th><th class="num-cell">Income</th><th class="num-cell">Expense</th><th class="num-cell">Net</th></tr></thead><tbody id="fin-table-monthly"></tbody></table>
+                        </div>
+                    </div>
+                    <div class="panel-plain overflow-hidden">
+                        <div class="panel-head"><h3>Procurement queue</h3><span class="text-[10px] text-slate-400 font-bold">Action required</span></div>
+                        <div class="pipeline-cards" id="fin-pipeline-cards">
+                            <button type="button" class="pipeline-card" onclick="finance.switchTab('procurement'); finance.switchProcurementSub('grn')">
+                                <span class="pipeline-card__value" id="fin-pipe-grn">0</span>
+                                <span class="pipeline-card__label">PO awaiting GRN</span>
+                            </button>
+                            <button type="button" class="pipeline-card" onclick="finance.switchTab('procurement'); finance.switchProcurementSub('ap')">
+                                <span class="pipeline-card__value" id="fin-pipe-match">0</span>
+                                <span class="pipeline-card__label">GRN → 3-way match</span>
+                            </button>
+                            <button type="button" class="pipeline-card" onclick="finance.switchTab('procurement'); finance.switchProcurementSub('ap')">
+                                <span class="pipeline-card__value" id="fin-pipe-ap">0</span>
+                                <span class="pipeline-card__label">AP ready to pay</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="panel-plain overflow-hidden">
+                        <div class="panel-head">
+                            <h3>Key account balances</h3>
+                            <button type="button" class="text-[10px] font-bold text-brand-700 hover:underline" onclick="finance.switchTab('accounting'); finance.switchAccountingSub('trial_balance')">Trial balance →</button>
+                        </div>
+                        <table class="metrics-table"><thead><tr><th>Code</th><th>Account</th><th class="num-cell">Balance</th></tr></thead><tbody id="fin-table-balances"></tbody></table>
+                    </div>
+                    <div class="panel-plain overflow-hidden">
+                        <div class="panel-head">
+                            <h3>Latest journal activity</h3>
+                            <button type="button" class="text-[10px] font-bold text-brand-700 hover:underline" onclick="finance.switchTab('accounting'); finance.switchAccountingSub('ledger')">Full ledger →</button>
+                        </div>
+                        <table class="metrics-table erp-table-full"><thead><tr><th>Date</th><th>Ref</th><th>Description</th><th class="num-cell">Debit</th><th class="num-cell">Credit</th></tr></thead><tbody id="fin-table-recent"></tbody></table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sales journal (POS → GL) -->
+            <div id="fin-tab-sales_journal" class="fin-acc-pane hide space-y-4">
+                <div class="erp-page-header">
+                    <div class="erp-page-header-icon bg-emerald-500/20 text-emerald-700"><i class="fas fa-cash-register"></i></div>
+                    <div>
+                        <h2 class="text-xl font-black text-slate-800">Sales journal</h2>
+                        <p class="text-xs text-slate-500">Each POS sale posts Dr Cash/QRIS · Cr Revenue · Dr COGS · Cr Inventory</p>
+                    </div>
+                </div>
+                <div class="panel-plain overflow-hidden">
+                    <table class="metrics-table erp-table-full">
+                        <thead><tr><th>Date/time</th><th>Ref</th><th>Payment</th><th class="num-cell">Amount</th><th>GL posting</th></tr></thead>
+                        <tbody id="fin-sales-journal-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Adjusting entries -->
+            <div id="fin-tab-adjusting" class="fin-acc-pane hide space-y-4">
+                <div class="erp-page-header">
+                    <div class="erp-page-header-icon bg-indigo-500/20 text-indigo-700"><i class="fas fa-pen-to-square"></i></div>
+                    <div>
+                        <h2 class="text-xl font-black text-slate-800">Adjusting entries</h2>
+                        <p class="text-xs text-slate-500">Manual JVs, accruals, expenses — post via Ledger → Manual journal</p>
+                    </div>
+                </div>
+                <div class="panel-plain overflow-hidden">
+                    <table class="metrics-table erp-table-full">
+                        <thead><tr><th>Date/time</th><th>Ref</th><th>Description</th><th>Accounts</th><th class="num-cell">Debit</th><th class="num-cell">Credit</th></tr></thead>
+                        <tbody id="fin-adjusting-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: PO Processing -->
+            <div id="fin-tab-po" class="fin-proc-pane hide">
+                <div class="erp-page-header mb-6">
+                    <div class="erp-page-header-icon bg-emerald-500/20 text-emerald-700"><i class="fas fa-file-contract"></i></div>
+                    <div>
+                        <h2 class="text-2xl font-black text-slate-800 tracking-tight">Purchase Order (PO)</h2>
+                        <p class="text-xs text-slate-500">Purchase orders from manager approval</p>
+                    </div>
+                </div>
+                <div class="panel-plain overflow-hidden erp-table-wrap fade-in-up">
+                    <table class="w-full text-left text-xs erp-table">
+                        <thead class="bg-slate-100 text-slate-600 font-extrabold uppercase tracking-wider text-[10px] border-b">
+                            <tr>
+                                <th class="p-4 pl-6">PO Number</th>
+                                <th class="p-4">Supplier Partner</th>
+                                <th class="p-4">Raw Material (Qty)</th>
+                                <th class="p-4 text-right">Estimated Cost</th>
+                                <th class="p-4">Procurement Status</th>
+                                <th class="p-4 text-right pr-6">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fin-po-list" class="divide-y divide-slate-100 font-medium">
+                            <!-- Dynamic via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 2: GRN (Physical Goods Receipt) -->
+            <div id="fin-tab-grn" class="fin-proc-pane hide">
+                <div class="erp-page-header mb-6">
+                    <div class="erp-page-header-icon bg-blue-500/20 text-blue-700"><i class="fas fa-dolly"></i></div>
+                    <div>
+                        <h2 class="text-2xl font-black text-slate-800 tracking-tight">Goods receipt (GRN)</h2>
+                        <p class="text-xs text-slate-500">Confirm receipt before updating stock and GRN accrual</p>
+                    </div>
+                </div>
+                <div class="sparkle-card overflow-hidden max-w-4xl p-6 fade-in-up">
+                    <p class="text-slate-500 mb-6 text-xs leading-relaxed">The ERP system requires warehouse receipt confirmation (GRN) to recognize accrual liabilities *Unbilled Payables (Accrual GRN)*.</p>
+                    <div id="fin-grn-container" class="space-y-4">
+                        <!-- Dynamic via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: AP & 3-Way Match Verification & Payment -->
+            <div id="fin-tab-ap" class="fin-proc-pane hide">
+                <div class="erp-page-header mb-6">
+                    <div class="erp-page-header-icon bg-amber-500/20 text-amber-700"><i class="fas fa-file-shield"></i></div>
+                    <div>
+                        <h2 class="text-2xl font-black text-slate-800 tracking-tight">3-way match &amp; accounts payable</h2>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl">
+                    <!-- Left Column: Pending 3-Way Match -->
+                    <div class="space-y-6">
+                        <div class="sparkle-card p-6 fade-in-up">
+                            <h3 class="font-extrabold text-slate-800 text-xs uppercase tracking-wider mb-4 relative z-10">Documents Awaiting Verification</h3>
+                            <div id="fin-match-list" class="space-y-3">
+                                <!-- Dynamic via JS -->
+                            </div>
+                        </div>
+
+                        <!-- Payment Settlement -->
+                        <div class="sparkle-card p-6 fade-in-up">
+                            <h3 class="font-extrabold text-slate-800 text-xs uppercase tracking-wider mb-4">Accounts Payable Settlement List</h3>
+                            <div id="fin-unpaid-ap-list" class="space-y-3">
+                                <!-- Dynamic via JS -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column: Verification Form -->
+                    <div class="sparkle-card p-6 relative fade-in-up" style="animation-delay:0.15s">
+                        <div id="fin-match-overlay" class="absolute inset-0 bg-white/95 backdrop-blur-sm z-10 flex flex-col items-center justify-center p-6 text-center rounded-2xl">
+                            <i class="fas fa-hand-pointer text-5xl text-amber-300 mb-4 animate-bounce"></i>
+                            <h4 class="font-bold text-slate-800 mb-1">Select a document on the left</h4>
+                            <p class="text-slate-500 text-xs max-w-xs leading-relaxed">Click one of the pending documents to load the 3-Way Match assistant.</p>
+                        </div>
+
+                        <h3 class="font-extrabold text-slate-800 border-b pb-3 mb-4 text-sm uppercase tracking-wider flex items-center gap-2">
+                            <span class="bg-amber-100 text-amber-800 p-1.5 rounded-lg"><i class="fas fa-file-shield"></i></span>
+                            3-Way Match AP Form
+                        </h3>
+                        <div class="space-y-4 text-xs" id="fin-match-form">
+                            <div class="bg-slate-50 p-4 rounded-xl text-slate-700 space-y-1 border border-slate-100">
+                                <div class="flex justify-between"><strong>PO Number:</strong> <span id="fm-po-id" class="font-mono">-</span></div>
+                                <div class="flex justify-between"><strong>GRN Number:</strong> <span id="fm-grn-id" class="font-mono">-</span></div>
+                                <div class="flex justify-between"><strong>Supplier Partner:</strong> <span id="fm-supplier" class="font-semibold">-</span></div>
+                                <div class="flex justify-between"><strong>Goods Ordered:</strong> <span id="fm-item" class="font-semibold">-</span></div>
+                                <div class="flex justify-between text-brand-600 font-bold border-t border-slate-200 pt-1.5 mt-1.5">
+                                    <span>Standard Warehouse Cost:</span>
+                                    <span id="fm-standard-cost">-</span>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Supplier Invoice Document Number</label>
+                                <input type="text" id="fm-inv-number" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 font-bold" placeholder="INV-2026-XXXX">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Supplier Invoice Amount (Rp)</label>
+                                <input type="number" id="fm-inv-amount" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 font-black text-sm text-brand-700" placeholder="150000">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Attach Physical Proof Document (Required)</label>
+                                <div class="flex items-center gap-3">
+                                    <input type="file" id="fm-inv-file" accept="image/*,.pdf" onchange="finance.simulateUpload(event)" class="w-full px-4 py-2 border border-dashed border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 text-xs">
+                                </div>
+                                <div id="uploaded-inv-preview" class="mt-2 text-[10px] text-emerald-600 font-semibold hide flex items-center gap-1">
+                                    <i class="fas fa-check-circle"></i> Document <span id="uploaded-inv-name"></span> Uploaded Successfully! (Digital Simulation)
+                                </div>
+                            </div>
+                            
+                            <div class="pt-2">
+                                <label class="font-extrabold text-slate-700 mb-3 block border-b pb-1.5 uppercase text-[10px] tracking-wider"><i class="fas fa-clipboard-check mr-1 text-amber-500"></i> Internal Control Checklist</label>
+                                <label class="flex items-start gap-2.5 mb-2.5 cursor-pointer leading-tight">
+                                    <input type="checkbox" id="chk-po" class="w-4 h-4 text-brand-600 rounded mt-0.5 border-slate-300"> 
+                                    <span>Item & Qty match the <strong>Purchase Order (PO)</strong></span>
+                                </label>
+                                <label class="flex items-start gap-2.5 mb-2.5 cursor-pointer leading-tight">
+                                    <input type="checkbox" id="chk-grn" class="w-4 h-4 text-brand-600 rounded mt-0.5 border-slate-300"> 
+                                    <span>Physical receipt matches the <strong>Goods Receipt (GRN)</strong></span>
+                                </label>
+                                <label class="flex items-start gap-2.5 mb-2.5 cursor-pointer leading-tight">
+                                    <input type="checkbox" id="chk-amt" class="w-4 h-4 text-brand-600 rounded mt-0.5 border-slate-300"> 
+                                    <span>Supplier Invoice amount matches Standard Cost</span>
+                                </label>
+                            </div>
+
+                            <button onclick="finance.submitMatch()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-2xl shadow-lg mt-4 transition text-xs uppercase tracking-wider">RECONCILE & CREATE AP</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 4: General Ledger with sub-toggles for Account Card and Manual Journal -->
+            <div id="fin-tab-ledger" class="fin-acc-pane hide">
+                <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                    <div class="erp-page-header mb-0 flex-1">
+                        <div class="erp-page-header-icon bg-indigo-500/20 text-indigo-700"><i class="fas fa-book-open"></i></div>
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-800 tracking-tight">General ledger</h2>
+                        </div>
+                    </div>
+                    <!-- Ledger View Mode Toggles & Export -->
+                    <div class="flex bg-slate-200 p-1 rounded-xl text-xs font-bold self-start md:self-auto shadow-inner relative z-20">
+                        <button type="button" onclick="finance.setLedgerViewMode('all')" id="mode-ledger-all" class="px-4 py-2 rounded-lg bg-white text-slate-800 shadow transition">All Journals</button>
+                        <button type="button" onclick="finance.setLedgerViewMode('account')" id="mode-ledger-account" class="px-4 py-2 rounded-lg text-slate-600 hover:text-slate-800 transition">Account Ledger Card</button>
+                        <button type="button" onclick="finance.setLedgerViewMode('manual')" id="mode-ledger-manual" class="px-4 py-2 rounded-lg text-brand-700 hover:text-brand-800 flex items-center gap-1 transition"><i class="fas fa-plus"></i> Manual Journal</button>
+                        <button type="button" onclick="finance.exportLedgerCSV()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white ml-1 flex items-center gap-1 shadow transition" title="Export journal data to CSV/Excel">
+                            <i class="fas fa-file-csv"></i> Export CSV
+                        </button>
+                    </div>
+                </div>
+                <!-- SUB-VIEW A: ALL JOURNALS -->
+                <div id="ledger-sub-all" class="panel-plain overflow-hidden fade-in-up">
+                    <div class="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                        <h3 class="font-extrabold text-slate-700 text-xs uppercase tracking-wider">ERP Transaction Journal</h3>
+                        <span class="text-[10px] bg-brand-100 text-brand-800 px-2.5 py-1 rounded font-mono border border-brand-200">PSAK</span>
+                    </div>
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-100 text-slate-600 font-extrabold uppercase tracking-wider text-[10px] border-b">
+                            <tr>
+                                <th class="p-4 pl-6 w-32">Journal Time</th>
+                                <th class="p-4 w-32">Ref Code</th>
+                                <th class="p-4">Account Description</th>
+                                <th class="p-4 w-36 text-right">Debit (Rp)</th>
+                                <th class="p-4 w-36 text-right pr-6">Credit (Rp)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fin-ledger-list" class="divide-y divide-slate-100 font-mono text-xs">
+                            <!-- Dynamic via Journal -->
+                        </tbody>
+                        <tfoot class="bg-slate-50 font-extrabold text-slate-800 border-t">
+                            <tr>
+                                <td colspan="3" class="p-4 pl-6 text-right uppercase tracking-wider text-[10px]">Balance Verification (Trial Balance):</td>
+                                <td id="ledger-total-debit" class="p-4 text-right text-emerald-700 font-black text-sm">Rp 0</td>
+                                <td id="ledger-total-credit" class="p-4 text-right text-emerald-700 font-black text-sm pr-6">Rp 0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- SUB-VIEW B: DETAILED ACCOUNT CARD (SUBSIDIARY LEDGER) -->
+                <div id="ledger-sub-account" class="panel-plain p-6 hide fade-in-up">
+                    <div class="flex items-center gap-3 mb-6 bg-slate-50 p-4 rounded-xl border">
+                        <label class="font-extrabold text-xs text-slate-600 uppercase tracking-wider">Select Subsidiary Ledger Account:</label>
+                        <select id="ledger-account-selector" onchange="finance.renderAccountCard()" class="px-4 py-2 border border-slate-300 rounded-xl outline-none font-bold text-xs bg-white text-slate-800 focus:ring-2 focus:ring-brand-500 w-full max-w-md">
+                            <!-- Dynamic via JS -->
+                        </select>
+                    </div>
+
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead class="bg-slate-100 text-slate-600 font-extrabold uppercase tracking-wider text-[10px] border-b">
+                            <tr>
+                                <th class="p-4 pl-6 w-32">Time</th>
+                                <th class="p-4 w-32">Ref Code</th>
+                                <th class="p-4">Transaction Description</th>
+                                <th class="p-4 w-32 text-right">Debit (Rp)</th>
+                                <th class="p-4 w-32 text-right">Credit (Rp)</th>
+                                <th class="p-4 w-36 text-right pr-6">Running Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="account-card-tbody" class="divide-y divide-slate-100 text-xs">
+                            <!-- Dynamic via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- SUB-VIEW C: MANUAL JOURNAL ENTRY FORM -->
+                <div id="ledger-sub-manual" class="sparkle-card p-6 max-w-4xl hide relative fade-in-up">
+                    <h3 class="font-black text-slate-800 text-sm uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <span class="bg-brand-100 text-brand-800 p-1.5 rounded-lg"><i class="fas fa-pen-nib"></i></span>
+                        Manual Journal Voucher Entry (JV)
+                    </h3>
+                    <p class="text-xs text-slate-500 mb-6">Use this form for free journal entries (adjustments, payroll, custom equity, etc.).</p>
+
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                            <div>
+                                <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Journal Description</label>
+                                <input type="text" id="manual-jv-desc" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none font-bold text-slate-700 focus:ring-2 focus:ring-brand-500" placeholder="Office Electricity & Wifi Expense Payment">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Reference Number (Auto/Custom)</label>
+                                <input type="text" id="manual-jv-ref" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none font-bold text-brand-700 focus:ring-2 focus:ring-brand-500" placeholder="JV-KUSTOM">
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Journal Rows -->
+                        <div class="border rounded-2xl p-4 bg-slate-50 space-y-3">
+                            <div class="flex justify-between items-center border-b pb-2 mb-2">
+                                <span class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Journal Account Rows</span>
+                                <button onclick="finance.addManualJournalRow()" class="text-xs text-brand-600 hover:text-brand-800 font-bold flex items-center gap-1"><i class="fas fa-plus"></i> Add Account</button>
+                            </div>
+                            <div id="manual-jv-rows" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                <!-- Dynamic Rows via JS -->
+                            </div>
+                        </div>
+
+                        <!-- Validation Summary -->
+                        <div class="bg-slate-100 p-4 rounded-xl flex justify-between items-center text-xs font-bold font-mono border border-slate-200">
+                            <div class="text-slate-600 flex gap-4">
+                                <span>Total Debit: <span id="manual-jv-total-debit" class="text-slate-800">Rp 0</span></span>
+                                <span>Total credit: <span id="manual-jv-total-credit" class="text-slate-800">Rp 0</span></span>
+                            </div>
+                            <div id="manual-jv-validation-status" class="text-red-600"><i class="fas fa-circle-exclamation"></i> Journal Not Balanced</div>
+                        </div>
+
+                        <button onclick="finance.postManualJournal()" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-extrabold py-3 rounded-xl transition shadow text-xs uppercase tracking-wider">
+                            POST JOURNAL VOUCHER TO LEDGER
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 5: TRIAL BALANCE -->
+            <div id="fin-tab-trial_balance" class="fin-acc-pane hide">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-2xl font-black text-slate-800 tracking-tight">Trial Balance</h2>
+                        <p class="text-xs text-slate-500">A list of all ledger account balances to prove journal integrity (Debits = Credits)</p>
+                    </div>
+                </div>
+
+                <div class="panel-plain overflow-hidden fade-in-up">
+                    <div class="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                        <h3 class="font-extrabold text-slate-700 text-xs uppercase tracking-wider">Adjusted Trial Balance</h3>
+                        <span class="text-xs text-slate-400 font-mono">Calculated in real time from General Ledger</span>
+                    </div>
+                    <div id="tb-balance-indicator" class="mb-3 px-4 pt-3"></div>
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead class="bg-slate-100 text-slate-600 font-extrabold uppercase tracking-wider text-[10px] border-b">
+                            <tr>
+                                <th class="p-4 pl-6 w-24">Account Code</th>
+                                <th class="p-4">Account Name</th>
+                                <th class="p-4 w-44 text-right">Debit Balance (Rp)</th>
+                                <th class="p-4 w-44 text-right pr-6">Credit Balance (Rp)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trial-balance-tbody" class="divide-y divide-slate-100">
+                            <!-- Dynamic via JS -->
+                        </tbody>
+                        <tfoot class="bg-slate-50 font-extrabold text-slate-800 border-t border-slate-200">
+                            <tr>
+                                <td colspan="2" class="p-4 pl-6 text-right uppercase tracking-wider text-[10px]">Total Balancing Amount:</td>
+                                <td id="trial-balance-total-debit" class="p-4 text-right text-emerald-700 font-black text-sm">Rp 0</td>
+                                <td id="trial-balance-total-credit" class="p-4 text-right text-emerald-700 font-black text-sm pr-6">Rp 0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Income statement (P&L) -->
+            <div id="fin-tab-income_statement" class="fin-acc-pane hide">
+                <div class="erp-page-header mb-6">
+                    <div class="erp-page-header-icon bg-amber-500/20 text-amber-600"><i class="fas fa-file-invoice"></i></div>
+                    <div>
+                        <h2 class="text-xl font-black text-slate-800">Income statement</h2>
+                        <p class="text-xs text-slate-500">Generated from posted general ledger · <span data-live-clock class="font-mono">—</span></p>
+                    </div>
+                </div>
+                <div class="panel-plain p-6 max-w-2xl fade-in-up">
+                        <div class="text-center mb-6">
+                            <h3 class="font-black text-slate-800 text-lg">Income Statement</h3>
+                            <p class="text-slate-500 text-xs">For the current period</p>
+                            <div class="h-px bg-slate-200 w-full mt-4"></div>
+                        </div>
+
+                        <div class="space-y-4 text-xs">
+                            <div class="flex justify-between font-bold text-slate-700">
+                                <span class="uppercase tracking-wide text-[10px]">OPERATING REVENUE</span>
+                                <span></span>
+                            </div>
+                            <div class="flex justify-between pl-4">
+                                <span>Lekker & Juice Sales Revenue (Account 401)</span>
+                                <span id="stmt-inc-revenue" class="font-medium">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between font-extrabold text-slate-800 bg-slate-50 p-2 rounded-lg">
+                                <span>TOTAL OPERATING REVENUE</span>
+                                <span id="stmt-inc-total-rev">Rp 0</span>
+                            </div>
+
+                            <div class="flex justify-between font-bold text-slate-700 pt-2">
+                                <span class="uppercase tracking-wide text-[10px]">COST OF GOODS SOLD</span>
+                                <span></span>
+                            </div>
+                            <div class="flex justify-between pl-4">
+                                <span>Standard COGS (Account 501)</span>
+                                <span id="stmt-inc-cogs" class="font-medium text-amber-700">(Rp 0)</span>
+                            </div>
+                            <div class="flex justify-between font-extrabold text-slate-800 bg-slate-50 p-2 rounded-lg">
+                                <span>GROSS PROFIT (GROSS MARGIN)</span>
+                                <span id="stmt-inc-gross">Rp 0</span>
+                            </div>
+
+                            <div class="flex justify-between font-bold text-slate-700 pt-2">
+                                <span class="uppercase tracking-wide text-[10px]">OPERATING EXPENSES & DEPRECIATION</span>
+                                <span></span>
+                            </div>
+                            <div class="flex justify-between pl-4">
+                                <span>Cashier Variance Expense (Over/Short) (Account 502)</span>
+                                <span id="stmt-inc-shortage" class="font-medium text-red-600">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between pl-4">
+                                <span>Inventory Variance Adjustment Expense (Account 503)</span>
+                                <span id="stmt-inc-adjust-expense" class="font-medium text-red-600">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between pl-4">
+                                <span>Salary & Wages Expense (Account 601)</span>
+                                <span id="stmt-inc-expense-601" class="font-medium text-red-600">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between pl-4">
+                                <span>Store Operating Expense (Electricity/Wifi) (Account 602)</span>
+                                <span id="stmt-inc-expense-602" class="font-medium text-red-600">Rp 0</span>
+                            </div>
+                            <div class="h-px bg-slate-200"></div>
+                            <div class="flex justify-between font-black text-sm text-emerald-800 bg-emerald-50 p-3 rounded-xl border border-emerald-100 shadow-inner">
+                                <span class="uppercase tracking-wider">RUNNING NET PROFIT</span>
+                                <span id="stmt-inc-net">Rp 0</span>
+                            </div>
+                        </div>
+                </div>
+            </div>
+
+            <!-- Balance sheet -->
+            <div id="fin-tab-balance_sheet" class="fin-acc-pane hide">
+                <div class="erp-page-header mb-6">
+                    <div class="erp-page-header-icon bg-brand-500/20 text-brand-700"><i class="fas fa-scale-balanced"></i></div>
+                    <div>
+                        <h2 class="text-xl font-black text-slate-800">Balance sheet</h2>
+                        <p class="text-xs text-slate-500">As of <span data-live-clock class="font-mono">—</span></p>
+                    </div>
+                </div>
+                <div class="panel-plain p-6 max-w-2xl fade-in-up">
+                        <div id="bs-balance-indicator" class="mb-3"></div>
+                        <div class="text-center mb-6">
+                            <h3 class="font-black text-slate-800 text-lg">Statement of financial position</h3>
+                            <p class="text-slate-500 text-xs">As of Today</p>
+                            <div class="h-px bg-slate-200 w-full mt-4"></div>
+                        </div>
+
+                        <div class="space-y-4 text-xs">
+                            <!-- AKTIVA -->
+                            <div class="flex justify-between font-black text-slate-800 text-xs border-b pb-1">
+                                <span class="uppercase tracking-wider">ASSETS</span>
+                                <span></span>
+                            </div>
+                            <div class="flex justify-between pl-2">
+                                <span>Cash Drawer (Account 101)</span>
+                                <span id="stmt-bal-cash" class="font-medium">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between pl-2">
+                                <span>Bank - QRIS Settlement (Account 102)</span>
+                                <span id="stmt-bal-qris" class="font-medium">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between pl-2">
+                                <span>Bank - EDC Merchant Card (Account 103)</span>
+                                <span id="stmt-bal-card" class="font-medium">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between pl-2">
+                                <span>Warehouse Raw Material Inventory (Account 110)</span>
+                                <span id="stmt-bal-inventory" class="font-medium">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between font-extrabold text-slate-800 bg-slate-50 p-2.5 rounded-lg shadow-inner border border-slate-100">
+                                <span>TOTAL ASSETS</span>
+                                <span id="stmt-bal-total-assets" class="text-brand-600">Rp 0</span>
+                            </div>
+
+                            <!-- PASIVA -->
+                            <div class="flex justify-between font-black text-slate-800 text-xs border-b pb-1 pt-2">
+                                <span class="uppercase tracking-wider">LIABILITIES & EQUITY</span>
+                                <span></span>
+                            </div>
+                            <div class="flex justify-between pl-2">
+                                <span>Trade Payables (AP) (Account 211)</span>
+                                <span id="stmt-bal-ap" class="font-medium">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between pl-2">
+                                <span>Unbilled Payables (Accrual GRN) (Account 210)</span>
+                                <span id="stmt-bal-accrual" class="font-medium">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between pl-2">
+                                <span>Restaurant Tax Payable / PB1 (Account 212)</span>
+                                <span id="stmt-bal-taxpayable" class="font-medium">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between pl-2">
+                                <span>Owner Capital (Account 301)</span>
+                                <span id="stmt-bal-equity" class="font-medium">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between pl-2">
+                                <span>Retained Earnings</span>
+                                <span id="stmt-bal-retained" class="font-medium text-emerald-700">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between font-extrabold text-slate-800 bg-slate-50 p-2.5 rounded-lg shadow-inner border border-slate-100">
+                                <span>TOTAL LIABILITIES & EQUITY</span>
+                                <span id="stmt-bal-total-liab-eq" class="text-brand-600">Rp 0</span>
+                            </div>
+                        </div>
+                </div>
+            </div>
+
+            <!-- Tab 7: Audit Trail & Internal Control Log -->
+            <div id="fin-tab-audit" class="fin-content hide">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-2xl font-black text-slate-800 tracking-tight">Audit Trail & Security Logs</h2>
+                        <p class="text-xs text-slate-500">Accounting mutation logs & internal control authorization (COSO Framework)</p>
+                    </div>
+                </div>
+                
+                <div class="sparkle-card p-6 max-w-5xl fade-in-up">
+                    <div class="flex justify-between mb-4">
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">AIS Security Log System</span>
+                        <button onclick="audit.clearLogs()" class="text-xs text-red-500 hover:underline">Clear Demo Logs</button>
+                    </div>
+                    <div class="space-y-2 font-mono text-xs overflow-y-auto max-h-[500px]" id="fin-audit-logs">
+                        <!-- Dynamic via JS -->
+                    </div>
+                </div>
+            </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: ADD NEW RAW MATERIAL (INVENTORY) -->
+    <div id="modal-add-inventory" class="modal-overlay hide">
+        <div class="modal-box sparkle-card">
+            <button type="button" onclick="manager.closeAddInventoryModal()" class="modal-close"><i class="fas fa-times"></i></button>
+            <h3 class="text-xl font-black text-slate-800 tracking-tight mb-4 flex items-center gap-2">
+                <i class="fas fa-cubes text-emerald-600"></i> Add New Raw Material
+            </h3>
+            <div class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Catalog item (optional)</label>
+                    <select id="add-inv-preset" onchange="manager.onPresetInventorySelect(this.value)" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-slate-700 bg-white">
+                        <option value="">— New custom item (manual entry) —</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Raw Material Name</label>
+                    <input type="text" id="add-inv-name" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-slate-700" placeholder="Example: Premium Oreo Crumbs">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Unit of Measure</label>
+                        <input type="text" id="add-inv-unit" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold" placeholder="Example: kg, liter, pcs">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Standard Cost per Unit (Rp)</label>
+                        <input type="number" id="add-inv-cost" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold" placeholder="Example: 30000">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Safety Stock (Par Level)</label>
+                        <input type="number" id="add-inv-par" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold" placeholder="Example: 2">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Opening Physical Stock</label>
+                        <input type="number" id="add-inv-stock" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold" placeholder="Example: 10">
+                    </div>
+                </div>
+                <button onclick="manager.submitAddInventory()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-xl transition shadow mt-4 text-xs uppercase tracking-wider">
+                    SAVE & POST OPENING BALANCE
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: REGISTER NEW MENU & BOM RECIPE -->
+    <div id="modal-add-menu" class="modal-overlay hide">
+        <div class="modal-box modal-box--wide sparkle-card">
+            <button type="button" onclick="manager.closeAddMenuModal()" class="modal-close"><i class="fas fa-times"></i></button>
+            <h3 class="text-xl font-black text-slate-800 tracking-tight mb-4 flex items-center gap-2">
+                <i class="fas fa-pizza-slice text-brand-600"></i> Register New Menu (Recipe BOM)
+            </h3>
+            <div class="space-y-4 text-xs overflow-y-auto max-h-[500px] pr-2">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Menu Name</label>
+                        <input type="text" id="add-menu-name" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 font-bold" placeholder="Lekker Matcha Almond">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Selling Price (Rp)</label>
+                        <input type="number" id="add-menu-price" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 font-bold" placeholder="Auto from BOM">
+                        <p id="add-menu-price-hint" class="text-[10px] text-slate-500 mt-1 font-bold leading-snug">Select recipe ingredients — price fills automatically (standard cost + margin).</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Menu Category</label>
+                        <select id="add-menu-cat" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 font-bold text-slate-700" onchange="manager.updateSuggestedMenuPrice()">
+                            <option value="Lekker Premium">🍫 Lekker Premium</option>
+                            <option value="Juice & Shake">🍓 Juice & Shake</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Icon Emoji</label>
+                        <input type="text" id="add-menu-emoji" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 text-center text-lg font-bold" value="🧇">
+                    </div>
+                </div>
+
+                <!-- Recipe BOM Selection Grid -->
+                <div>
+                    <label class="block font-extrabold text-slate-700 mb-2 uppercase text-[10px] tracking-wider border-b pb-1">
+                        Configure Recipe Composition (Bill of Materials)
+                    </label>
+                    <div id="add-menu-bom-list" class="space-y-2.5 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-xl border">
+                        <!-- Dynamic based on current inventory -->
+                    </div>
+                </div>
+
+                <button onclick="manager.submitAddMenu()" class="w-full bg-brand-600 hover:bg-brand-500 text-white font-black py-3 rounded-xl transition shadow mt-4 text-xs uppercase tracking-wider">
+                    SAVE & INTEGRATE TO POS
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: STOCKTAKE / MANUAL ADJUSTMENT (INTERNAL CONTROL) -->
+    <div id="modal-adjust-stock" class="modal-overlay hide">
+        <div class="modal-box sparkle-card">
+            <button type="button" onclick="manager.closeAdjustStockModal()" class="modal-close"><i class="fas fa-times"></i></button>
+            <h3 class="text-lg font-black text-slate-800 tracking-tight mb-4 flex items-center gap-2">
+                <i class="fas fa-scale-balanced text-red-600"></i> Stocktake Discrepancy Correction
+            </h3>
+            <div class="space-y-4 text-xs">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/50">
+                    <div class="font-bold text-slate-700">Material: <span id="adj-item-name" class="font-extrabold">-</span></div>
+                    <div class="text-[10px] text-slate-400 font-bold mt-1">System Recorded Stock: <span id="adj-item-sys" class="font-mono text-slate-600">0 unit</span></div>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Correction Type</label>
+                    <select id="adj-type" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none font-bold text-slate-700">
+                        <option value="shortage">⚠️ Shortage Difference (Lost / Damaged / Expired)</option>
+                        <option value="overage">⭐ Overage Difference (Physical Surplus)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Discrepancy Units</label>
+                    <input type="number" id="adj-qty" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none font-bold text-center text-lg text-red-600" placeholder="Example: 1.5">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Reason Note (Audit)</label>
+                    <input type="text" id="adj-note" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl outline-none" placeholder="Spilled flour in kitchen / damaged">
+                </div>
+                <button onclick="manager.submitAdjustStock()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold py-3 rounded-xl transition shadow text-xs uppercase tracking-wider">
+                    PROCESS STOCK ADJUSTMENT AUDIT
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- POS receipt preview (thermal style) -->
+    <div id="receipt-modal" class="receipt-modal hide" role="dialog" aria-labelledby="receipt-modal-title" aria-modal="true">
+        <button type="button" class="receipt-modal__backdrop" onclick="pos.closeReceipt()" aria-label="Close receipt"></button>
+        <div class="receipt-modal__panel">
+            <div class="receipt-modal__toolbar">
+                <div class="receipt-modal__toolbar-text">
+                    <p id="receipt-modal-title" class="receipt-modal__title"><i class="fas fa-check-circle"></i> Payment successful</p>
+                    <p class="receipt-modal__subtitle">Review receipt below — print or continue selling</p>
+                </div>
+                <button type="button" onclick="pos.closeReceipt()" class="receipt-modal__close" aria-label="Close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="receipt-modal__scroll">
+                <article id="receipt-content" class="receipt-paper" aria-label="Sales receipt"></article>
+            </div>
+            <div class="receipt-modal__actions">
+                <button type="button" onclick="pos.printReceiptPaper()" class="receipt-btn receipt-btn--print"><i class="fas fa-print"></i> Print</button>
+                <button type="button" onclick="pos.closeReceipt()" class="receipt-btn receipt-btn--done"><i class="fas fa-arrow-right"></i> Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            function showLoaderError(message) {
+                var err = document.getElementById('loader-file-error');
+                var spin = document.getElementById('loader-spinner');
+                var status = document.getElementById('loader-status');
+                if (spin) spin.classList.add('hide');
+                if (status) status.textContent = message || 'Application could not start';
+                if (err) err.classList.remove('hide');
+            }
+            if (location.protocol === 'file:') {
+                showLoaderError('Use a local web server (see below)');
+                return;
+            }
+            window.addEventListener('error', function (e) {
+                if (e.filename && e.filename.indexOf('app.js') !== -1) {
+                    showLoaderError('Failed to load app.js â€” use http://localhost, not file://');
+                }
+            });
+            setTimeout(function () {
+                var loader = document.getElementById('app-loader');
+                if (loader && !loader.classList.contains('hide')) {
+                    showLoaderError('Loading timed out â€” run start-server.bat or python -m http.server 8080');
+                }
+            }, 15000);
+        })();
+    </script>
+    <script type="module" src="assets/js/app.js"></script>
+</body>
+</html>
+
